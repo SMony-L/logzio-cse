@@ -50,7 +50,6 @@ python3 logzio_fetch_logs.py \
   --format csv \
   --output logs-output.csv
 ```
-
 ### Optional Flags
 
 | Flag       | Description                                            |
@@ -59,7 +58,8 @@ python3 logzio_fetch_logs.py \
 | `--limit`  | Number of logs to fetch. Default: 10,000.              |
 | `--format` | Output format: `json` or `csv`.                        |
 | `--output` | Output filename. Default: `logs-<timestamp>.json/csv`. |
-| `--token`  | API token (optional if in `.env`)                      |
+| `--token`  | API token (optional if specified in `.env`).           |
+| `--config` | Path to configuration file. Default: `config.json`.    |
 
 ---
 
