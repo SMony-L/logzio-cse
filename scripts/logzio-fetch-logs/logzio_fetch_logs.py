@@ -10,15 +10,20 @@ from dotenv import load_dotenv
 # Load .env if exists
 load_dotenv()
 
+# Define the base directory and safelist
+BASE_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
+SAFE_FILES = {"config.json"}  # Safelist of accessible files
+
 # Helper function to sanitize and validate file paths
-def sanitize_file_path(file_path, base_directory):
+def sanitize_file_path(file_path, base_directory, safelist=None):
     """
     Validates and sanitizes a file path to prevent path traversal attacks.
-    Ensures the file path is within the allowed base directory.
+    Ensures the file path is within the allowed base directory and matches the safelist.
 
     Args:
         file_path (str): The path to the file.
         base_directory (str): The base directory where files are allowed.
+        safelist (set): A set of allowed filenames (optional).
 
     Returns:
         str: The sanitized and validated absolute path to the file.
@@ -29,17 +34,22 @@ def sanitize_file_path(file_path, base_directory):
     # Normalize the file path to prevent path traversal
     normalized_file_path = os.path.normpath(file_path)
 
-    # Ensure the resolved path is within the base directory
+    # Ensure the file is in the safelist if provided
+    if safelist and os.path.basename(normalized_file_path) not in safelist:
+        raise RuntimeError(f"Access to the file '{file_path}' is not allowed.")
+
+    # Resolve the absolute path
     resolved_path = os.path.abspath(os.path.join(base_directory, normalized_file_path))
-    if not os.path.commonpath([base_directory, resolved_path]) == base_directory:
+
+    # Ensure the resolved path is within the base directory
+    if not resolved_path.startswith(base_directory):
         raise RuntimeError(f"Access to the file '{file_path}' is not allowed.")
 
     return resolved_path
 
 # Load configuration
 def load_config(config_file="config.json"):
-    BASE_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
-    config_path = sanitize_file_path(config_file, BASE_DIRECTORY)
+    config_path = sanitize_file_path(config_file, BASE_DIRECTORY, SAFE_FILES)
 
     try:
         with open(config_path, "r") as f:
@@ -95,7 +105,6 @@ def continue_scroll(token, scroll_id):
 
 # Save logs to JSON
 def save_to_json(logs, output_file, json_fields):
-    BASE_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
     output_file_path = sanitize_file_path(output_file, BASE_DIRECTORY)
 
     try:
@@ -118,7 +127,6 @@ def save_to_json(logs, output_file, json_fields):
 
 # Save logs to CSV with filtered fields
 def save_to_csv(logs, output_file, csv_fields):
-    BASE_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
     output_file_path = sanitize_file_path(output_file, BASE_DIRECTORY)
 
     if not logs:
@@ -225,7 +233,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
-        BASE_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
         config = load_config(args.config)
         token = get_api_token(args.token)
         query_string = args.query or config.get("default_query", "INFO")
