@@ -1,0 +1,25 @@
+{
+    "csv_fields": [
+        "@timestamp",
+        "message",
+        "host_name",
+        "type",
+        "k8s_container_name",
+        "k8s_namespace_name",
+        "log_level",
+        "k8s_pod_name"
+    ],
+    "json_fields": [
+        "@timestamp",
+        "message",
+        "host_name",
+        "type",
+        "k8s_container_name",
+        "k8s_namespace_name"
+    ],
+    "default_query": "INFO",
+    "time_range": {
+        "gte": "now-60d",
+        "lte": "now"
+    }
+}
