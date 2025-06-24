@@ -10,10 +10,39 @@ from dotenv import load_dotenv
 # Load .env if exists
 load_dotenv()
 
+# Helper function to sanitize and validate file paths
+def sanitize_file_path(file_path, base_directory):
+    """
+    Validates and sanitizes a file path to prevent path traversal attacks.
+    Ensures the file path is within the allowed base directory.
+
+    Args:
+        file_path (str): The path to the file.
+        base_directory (str): The base directory where files are allowed.
+
+    Returns:
+        str: The sanitized and validated absolute path to the file.
+
+    Raises:
+        RuntimeError: If the file path is invalid or attempts to escape the base directory.
+    """
+    # Normalize the file path to prevent path traversal
+    normalized_file_path = os.path.normpath(file_path)
+
+    # Ensure the resolved path is within the base directory
+    resolved_path = os.path.abspath(os.path.join(base_directory, normalized_file_path))
+    if not os.path.commonpath([base_directory, resolved_path]) == base_directory:
+        raise RuntimeError(f"Access to the file '{file_path}' is not allowed.")
+
+    return resolved_path
+
 # Load configuration
 def load_config(config_file="config.json"):
+    BASE_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
+    config_path = sanitize_file_path(config_file, BASE_DIRECTORY)
+
     try:
-        with open(config_file, "r") as f:
+        with open(config_path, "r") as f:
             return json.load(f)
     except FileNotFoundError:
         raise RuntimeError(f"Configuration file '{config_file}' not found.")
@@ -66,6 +95,9 @@ def continue_scroll(token, scroll_id):
 
 # Save logs to JSON
 def save_to_json(logs, output_file, json_fields):
+    BASE_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
+    output_file_path = sanitize_file_path(output_file, BASE_DIRECTORY)
+
     try:
         filtered_logs = []
         for entry in logs:
@@ -78,19 +110,22 @@ def save_to_json(logs, output_file, json_fields):
                     value = datetime.utcfromtimestamp(value / 1000).isoformat() + "Z"
                 filtered_entry[field] = value
             filtered_logs.append(filtered_entry)
-        with open(output_file, "w") as f:
+        with open(output_file_path, "w") as f:
             json.dump(filtered_logs, f, indent=2)
-        print(f"✅ Saved {len(filtered_logs)} logs to {output_file}")
+        print(f"✅ Saved {len(filtered_logs)} logs to {output_file_path}")
     except IOError as e:
         raise RuntimeError(f"Error writing JSON file: {e}")
 
 # Save logs to CSV with filtered fields
 def save_to_csv(logs, output_file, csv_fields):
+    BASE_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
+    output_file_path = sanitize_file_path(output_file, BASE_DIRECTORY)
+
     if not logs:
         print("⚠️ No logs to save to CSV.")
         return
     try:
-        with open(output_file, "w", newline='') as f:
+        with open(output_file_path, "w", newline='') as f:
             writer = csv.writer(f)
             writer.writerow(csv_fields)  # Write header row
             for entry in logs:
@@ -103,7 +138,7 @@ def save_to_csv(logs, output_file, csv_fields):
                         value = datetime.utcfromtimestamp(value / 1000).isoformat() + "Z"
                     row.append(value)
                 writer.writerow(row)
-        print(f"✅ Saved {len(logs)} logs to {output_file}")
+        print(f"✅ Saved {len(logs)} logs to {output_file_path}")
     except IOError as e:
         raise RuntimeError(f"Error writing CSV file: {e}")
 
@@ -190,6 +225,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
+        BASE_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
         config = load_config(args.config)
         token = get_api_token(args.token)
         query_string = args.query or config.get("default_query", "INFO")
